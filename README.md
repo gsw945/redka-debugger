@@ -30,6 +30,27 @@ go build -o redka-debugger.exe main.go
 # 运行
 redka-debugger.exe -h
 # example
-redka-debugger.exe -d "d:\proj\SBTProject\SBTOperationTools\logbus-parser\build\record.db" -k "*"
-redka-debugger.exe -d "d:\proj\SBTProject\SBTOperationTools\logbus-parser\build\record.db" -v "load-offset"
+
+redka-debugger.exe -d ".\data\record.db" -v "load-offset"
 ```
+
+### examples
+
+#### list keys
+- command: `redka-debugger.exe -d ".\data\record.db" -k "*"`
+- output:
+   ```
+   2024/07/18 10:41:53 reddka debugger
+   key(ID=1, Key=load-offset, Type=String(1), Version=21764, ETime=<nil>, MTime=1721211182488)
+   key(ID=2, Key=kafka-669789e8d791d51339cad7fa, Type=Hash(4), Version=13096, ETime=<nil>, MTime=1721211182488)
+   ```
+
+#### get value by key
+- command: `redka-debugger.exe -d ".\data\record.db" -v "load-offset"`
+- output:
+   ```
+   2024/07/18 10:42:01 reddka debugger
+   key(ID=1, Key=load-offset, Type=String(1), Version=21764, ETime=<nil>, MTime=1721211182488)
+   value: 33803
+   ```
+

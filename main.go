@@ -5,124 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-
-	"github.com/nalgeon/redka"
-	_ "modernc.org/sqlite"
+	"redka-debugger/gui"
+	"redka-debugger/redkacore"
+	"redka-debugger/utils"
+	"strings"
 )
 
-func printUsage() {
-	path, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	Executable := filepath.Base(path)
-	fmt.Println("Usage: " + Executable + " <Options>")
-	fmt.Println("Options:")
-	flag.PrintDefaults()
-}
-
-func loadDB(dbPath string) *redka.DB {
-	absPath, err := filepath.Abs(dbPath)
-	if err != nil {
-		panic(err)
-	}
-	opts := redka.Options{
-		DriverName: "sqlite",
-	}
-	db, err := redka.Open(absPath, &opts)
-	if err != nil {
-		panic(err)
-	}
-	return db
-}
-
-func redkaKeys(db *redka.DB, pattern string) {
-	keys, err := db.Key().Keys(pattern)
-	if err != nil {
-		panic(err)
-	}
-	for _, key := range keys {
-		fmt.Printf("key(ID=%d, Key=%s, Type=%v, Version=%d, ETime=%v, MTime=%v)\n", key.ID, key.Key, redkaTypeName(int(key.Type)), key.Version, key.ETime, key.MTime)
-	}
-}
-
-func redkaTypeName(t int) string {
-	switch t {
-	case 0:
-		return "Any(0)"
-	case 1:
-		return "String(1)"
-	case 2:
-		return "List(2)"
-	case 3:
-		return "Set(3)"
-	case 4:
-		return "Hash(4)"
-	case 5:
-		return "ZSet(5)"
-	default:
-		return "<Unknown>"
-	}
-}
-
-func redkaGet(db *redka.DB, key string) {
-	k, err := db.Key().Get(key)
-	if err != nil {
-		panic(err)
-	}
-	intType := int(k.Type)
-	typeName := redkaTypeName(intType)
-	fmt.Printf("key(ID=%d, Key=%s, Type=%v, Version=%d, ETime=%v, MTime=%v)\n", k.ID, k.Key, typeName, k.Version, k.ETime, k.MTime)
-	switch intType {
-	case 0:
-		fmt.Println("not supported")
-	case 1:
-		valueString, err := db.Str().Get(k.Key)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("value: %s\n", valueString)
-	case 2:
-		valueList, err := db.List().Range(k.Key, 0, -1)
-		if err != nil {
-			panic(err)
-		}
-		for i, v := range valueList {
-			fmt.Printf("value[%d]: %v\n", i, v)
-		}
-	case 3:
-		valueSet, err := db.Set().Items(k.Key)
-		if err != nil {
-			panic(err)
-		}
-		for i, v := range valueSet {
-			fmt.Printf("value[%d]: %v\n", i, v)
-		}
-	case 4:
-		valueHash, err := db.Hash().Items(k.Key)
-		if err != nil {
-			panic(err)
-		}
-		for k, v := range valueHash {
-			fmt.Printf("value[%s]: %v\n", k, v)
-		}
-	case 5:
-		valueZSet, err := db.ZSet().Range(k.Key, 0, -1)
-		if err != nil {
-			panic(err)
-		}
-		for i, v := range valueZSet {
-			fmt.Printf("value[%d]: %v\n", i, v)
-		}
-	default:
-		fmt.Println("not supported")
-	}
-}
-
-func main() {
-	log.Println("reddka debugger")
-
+func OldMain() {
 	var database string
 	var defaultDatabase = ""
 	const databaseUsage = "database file path"
@@ -137,30 +26,51 @@ func main() {
 
 	var value string
 	var defaultValue = ""
-	const valueUsage = "action: get value by key"
+	const valueUsage = "action: 1. the key to get value when not write action, 2. the key (value is hash, key format is 'key#field') to write when write action"
 	flag.StringVar(&value, "value", defaultValue, valueUsage)
 	flag.StringVar(&value, "v", defaultValue, valueUsage+" (shorthand)")
+
+	var write string
+	var defaultWrite = ""
+	const writeUsage = "action: the value to write"
+	flag.StringVar(&write, "write", defaultWrite, writeUsage)
+	flag.StringVar(&write, "w", defaultWrite, writeUsage+" (shorthand)")
 
 	flag.Parse()
 
 	if database == "" {
-		printUsage()
+		utils.PrintUsage()
 		os.Exit(1)
 	}
 
-	db := loadDB(database)
+	db := redkacore.LoadDB(database)
 	defer db.Close()
 
 	if Keys != "" {
-		redkaKeys(db, Keys)
+		redkacore.RedkaKeys(db, Keys)
 		return
 	}
 
 	if value != "" {
-		redkaGet(db, value)
+		if write != "" {
+			keyField := strings.Split(value, "#")
+			if len(keyField) == 2 {
+				redkacore.RedkaSet(db, keyField[0], write, keyField[1])
+			} else {
+				redkacore.RedkaSet(db, keyField[0], write, "")
+			}
+			return
+		}
+		redkacore.RedkaGet(db, value)
 		return
 	}
 
 	fmt.Println("No actions specified")
-	printUsage()
+	utils.PrintUsage()
+}
+
+func main() {
+	log.Println("reddka debugger")
+
+	gui.TuiDemo2()
 }

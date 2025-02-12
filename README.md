@@ -54,3 +54,11 @@ redka-debugger.exe -d ".\data\record.db" -v "load-offset"
    value: 33803
    ```
 
+### reference
+- github.com/nalgeon/redka
+- cli
+   - github.com/spf13/cobra
+- tui
+   - https://github.com/rivo/tview
+   - https://github.com/AEROGU/tvchooser
+- https://www.ditig.com/publications/256-colors-cheat-sheet
